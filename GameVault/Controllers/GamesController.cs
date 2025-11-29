@@ -84,7 +84,7 @@ public class GamesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateGame([FromBody] CreateGameDto createGameDto)
     {
-        // OLD CODE - Manual validation (now handled by [Required] data annotations in DTOs):
+        // OLD CODE - Manual validation (now handled by [Required] data annotations in <TargetFramework>net9.0</TargetFramework>s):
         // if (string.IsNullOrWhiteSpace(game.Title))
         // {
         //     return BadRequest(new { message = "Title is required" });
