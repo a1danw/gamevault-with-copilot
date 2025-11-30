@@ -1,0 +1,394 @@
+﻿@page "/games"
+@rendermode InteractiveServer
+@using GameVault.Models
+@using GameVault.Services
+@inject IGameService GameService
+
+<PageTitle>Games - GameVault</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h3>Game Collection</h3>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowAddGameForm">
+                ➕ Add New Game
+            </button>
+        </div>
+    </div>
+
+    @if (showAddEditForm)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>@(editingGame == null ? "Add New Game" : $"Edit Game: {editingGame.Title}")</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@gameForm" OnValidSubmit="@SaveGame">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Title *</label>
+                            <InputText class="form-control" @bind-Value="gameForm.Title" />
+                            <ValidationMessage For="@(() => gameForm.Title)" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Platform *</label>
+                            <InputText class="form-control" @bind-Value="gameForm.Platform" />
+                            <ValidationMessage For="@(() => gameForm.Platform)" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Genre</label>
+                            <InputText class="form-control" @bind-Value="gameForm.Genre" />
+                            <ValidationMessage For="@(() => gameForm.Genre)" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Release Year</label>
+                            <InputNumber class="form-control" @bind-Value="gameForm.ReleaseYear" />
+                            <ValidationMessage For="@(() => gameForm.ReleaseYear)" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Rating (1-5 stars)</label>
+                            <InputNumber class="form-control" @bind-Value="gameForm.Rating" min="1" max="5" />
+                            <ValidationMessage For="@(() => gameForm.Rating)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="gameForm.Description" />
+                        <ValidationMessage For="@(() => gameForm.Description)" />
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <InputCheckbox class="form-check-input" id="isCompleted" @bind-Value="gameForm.IsCompleted" />
+                        <label class="form-check-label" for="isCompleted">
+                            Completed
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span>⏳ Saving...</span>
+                            }
+                            else
+                            {
+                                <span>@(editingGame == null ? "✅ Create Game" : "✅ Update Game")</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">❌ Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading games...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            ⚠️ @errorMessage
+        </div>
+    }
+    else if (!games.Any())
+    {
+        <div class="alert alert-info">
+            ℹ️ No games found. Click "Add New Game" to get started!
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Platform</th>
+                                <th>Genre</th>
+                                <th>Year</th>
+                                <th>Rating</th>
+                                <th>Completed</th>
+                                <th style="width: 180px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var game in games)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@game.Title</strong>
+                                        @if (!string.IsNullOrWhiteSpace(game.Description))
+                                        {
+                                            <br />
+                                            <small class="text-muted">@(game.Description.Length > 80 ? game.Description.Substring(0, 80) + "..." : game.Description)</small>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-primary">@game.Platform</span></td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(game.Genre))
+                                        {
+                                            <span class="badge bg-secondary">@game.Genre</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>@(game.ReleaseYear?.ToString() ?? "-")</td>
+                                    <td>
+                                        @if (game.Rating.HasValue)
+                                        {
+                                            <span>@string.Concat(Enumerable.Repeat("⭐", game.Rating.Value))@string.Concat(Enumerable.Repeat("☆", 5 - game.Rating.Value))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Not rated</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (game.IsCompleted)
+                                        {
+                                            <span class="badge bg-success">✅ Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">❌ No</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-warning" @onclick="@(() => EditGame(game))" title="Edit">
+                                                ✏️ Edit
+                                            </button>
+                                            <button type="button" class="btn btn-danger" @onclick="@(() => ConfirmDelete(game))" title="Delete">
+                                                🗑️ Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-muted mt-2">
+                    Showing @games.Count game(s)
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showDeleteConfirm && gameToDelete != null)
+    {
+        <div class="modal d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">⚠️ Confirm Delete</h5>
+                        <button type="button" class="btn-close" @onclick="CancelDelete" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete <strong>@gameToDelete.Title</strong>?</p>
+                        <p class="text-danger">This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="DeleteGame">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<GameDto> games = new();
+    private CreateGameDto gameForm = new();
+    private GameDto? editingGame = null;
+    private GameDto? gameToDelete = null;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool showAddEditForm = false;
+    private bool showDeleteConfirm = false;
+    private string? errorMessage = null;
+
+    /// <summary>
+    /// Initializes the component and loads games
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGames();
+    }
+
+    /// <summary>
+    /// Loads all games from the service
+    /// </summary>
+    private async Task LoadGames()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            games = await GameService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load games: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Shows the add game form
+    /// </summary>
+    private void ShowAddGameForm()
+    {
+        editingGame = null;
+        gameForm = new CreateGameDto();
+        showAddEditForm = true;
+    }
+
+    /// <summary>
+    /// Edits an existing game
+    /// </summary>
+    private void EditGame(GameDto game)
+    {
+        editingGame = game;
+        gameForm = new CreateGameDto
+        {
+            Title = game.Title,
+            Platform = game.Platform,
+            Genre = game.Genre,
+            ReleaseYear = game.ReleaseYear,
+            Description = game.Description,
+            IsCompleted = game.IsCompleted,
+            Rating = game.Rating
+        };
+        showAddEditForm = true;
+    }
+
+    /// <summary>
+    /// Saves the game (create or update)
+    /// </summary>
+    private async Task SaveGame()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            if (editingGame == null)
+            {
+                // Create new game
+                await GameService.CreateAsync(gameForm);
+            }
+            else
+            {
+                // Update existing game
+                var updateDto = new UpdateGameDto
+                {
+                    Title = gameForm.Title,
+                    Platform = gameForm.Platform,
+                    Genre = gameForm.Genre,
+                    ReleaseYear = gameForm.ReleaseYear,
+                    Description = gameForm.Description,
+                    IsCompleted = gameForm.IsCompleted,
+                    Rating = gameForm.Rating
+                };
+                await GameService.UpdateAsync(editingGame.Id, updateDto);
+            }
+
+            await LoadGames();
+            CancelEdit();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save game: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Cancels the add/edit operation
+    /// </summary>
+    private void CancelEdit()
+    {
+        showAddEditForm = false;
+        editingGame = null;
+        gameForm = new CreateGameDto();
+    }
+
+    /// <summary>
+    /// Shows delete confirmation modal
+    /// </summary>
+    private void ConfirmDelete(GameDto game)
+    {
+        gameToDelete = game;
+        showDeleteConfirm = true;
+    }
+
+    /// <summary>
+    /// Cancels the delete operation
+    /// </summary>
+    private void CancelDelete()
+    {
+        gameToDelete = null;
+        showDeleteConfirm = false;
+    }
+
+    /// <summary>
+    /// Deletes the selected game
+    /// </summary>
+    private async Task DeleteGame()
+    {
+        if (gameToDelete == null) return;
+
+        try
+        {
+            errorMessage = null;
+            var success = await GameService.DeleteAsync(gameToDelete.Id);
+
+            if (success)
+            {
+                await LoadGames();
+                CancelDelete();
+            }
+            else
+            {
+                errorMessage = "Game not found or already deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete game: {ex.Message}";
+        }
+    }
+}

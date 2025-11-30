@@ -40,5 +40,16 @@ public class Game
     /// Gets or sets the description
     /// </summary>
     public string? Description { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the game has been completed
+    /// </summary>
+    public bool IsCompleted { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the personal rating (1-5 stars)
+    /// </summary>
+    [Range(1, 5)]
+    public int? Rating { get; set; }
 }
 

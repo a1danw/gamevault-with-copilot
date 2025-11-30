@@ -35,7 +35,9 @@ public class GameService : IGameService
             Platform = game.Platform,
             Genre = game.Genre,
             ReleaseYear = game.ReleaseYear,
-            Description = game.Description
+            Description = game.Description,
+            IsCompleted = game.IsCompleted,
+            Rating = game.Rating
         };
     }
 
@@ -50,7 +52,9 @@ public class GameService : IGameService
             Platform = dto.Platform,
             Genre = dto.Genre,
             ReleaseYear = dto.ReleaseYear,
-            Description = dto.Description
+            Description = dto.Description,
+            IsCompleted = dto.IsCompleted,
+            Rating = dto.Rating
         };
     }
 
@@ -64,6 +68,8 @@ public class GameService : IGameService
         game.Genre = dto.Genre;
         game.ReleaseYear = dto.ReleaseYear;
         game.Description = dto.Description;
+        game.IsCompleted = dto.IsCompleted;
+        game.Rating = dto.Rating;
     }
 
     /// <inheritdoc />
@@ -77,10 +83,8 @@ public class GameService : IGameService
         }
         catch (Exception ex)
         {
-            // Log the error with context before re-throwing
-            // This helps with debugging - you'll see exactly where the failure occurred
             _logger.LogError(ex, "Failed to retrieve games from database");
-            throw; // Re-throw to let the controller handle the HTTP response
+            throw;
         }
     }
 
@@ -116,13 +120,11 @@ public class GameService : IGameService
         }
         catch (DbUpdateException ex)
         {
-            // Specific handling for database constraint violations (duplicates, foreign keys, etc.)
             _logger.LogError(ex, "Database constraint error while creating game: {Title}", createGameDto.Title);
             throw new InvalidOperationException($"Could not save game '{createGameDto.Title}' due to database constraint", ex);
         }
         catch (Exception ex)
         {
-            // Catch-all for unexpected errors
             _logger.LogError(ex, "Unexpected error creating game: {Title}", createGameDto.Title);
             throw;
         }
@@ -150,7 +152,6 @@ public class GameService : IGameService
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            // Another user modified this record at the same time
             _logger.LogError(ex, "Concurrency conflict updating game ID {Id}", id);
             throw new InvalidOperationException($"Game with ID {id} was modified by another user. Please refresh and try again.", ex);
         }
@@ -187,7 +188,6 @@ public class GameService : IGameService
         }
         catch (DbUpdateException ex)
         {
-            // Could be foreign key constraint if game is referenced elsewhere
             _logger.LogError(ex, "Database error deleting game ID {Id} - may be referenced by other records", id);
             throw new InvalidOperationException($"Cannot delete game ID {id} because it is referenced by other records", ex);
         }

@@ -34,5 +34,15 @@ public class GameDto
     /// Gets or sets the description
     /// </summary>
     public string? Description { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the game has been completed
+    /// </summary>
+    public bool IsCompleted { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the personal rating (1-5 stars)
+    /// </summary>
+    public int? Rating { get; set; }
 }
 
